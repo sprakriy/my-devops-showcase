@@ -1,0 +1,43 @@
+name: Deploy Infrastructure
+on:
+  workflow_dispatch:
+   inputs:
+      target_project:
+        description: 'Which project to deploy? (e.g., infra-app, infra-main, or "all")'
+        required: true
+        default: 'all'
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required for requesting the JWT (OIDC)
+      contents: read  # Required for actions/checkout
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node (for Nx)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # PASTE YOUR ROLE ARN HERE
+          role-to-assume: arn:aws:iam::319310747432:role/GitHubActionsServiceRole
+          aws-region: us-east-1
+
+# This runs the chosen action (plan/apply/destroy) for all projects in the monorepo
+      - name: Execute Terraform via Nx
+        run: |
+          if [ "${{ github.event.inputs.action }}" == "apply" ] || [ "${{ github.event.inputs.action }}" == "destroy" ]; then
+            npx nx run-many -t ${{ github.event.inputs.action }} --args="--auto-approve"
+          else
+            npx nx run-many -t plan
+          fi

@@ -1,0 +1,33 @@
+{
+  "name": "infra-app",
+  "targets": {
+    "init": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "terraform init -reconfigure",
+        "cwd": "libs/infra-app"
+      }
+    },
+    "plan": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "terraform plan -out=tfplan",
+        "cwd": "libs/infra-app"
+      }
+    },
+    "apply": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "terraform apply \"tfplan\"",
+        "cwd": "libs/infra-app"
+      }
+    },
+    "destroy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "terraform destroy -auto-approve",
+        "cwd": "libs/infra-app"
+      }
+    }
+  }
+}

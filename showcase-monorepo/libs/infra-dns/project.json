@@ -1,0 +1,33 @@
+{
+  "name": "infra-dns",
+  "targets": {
+    "init": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "terraform init -reconfigure",
+        "cwd": "libs/infra-dns"
+      }
+    },
+    "plan": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "terraform plan -out=tfplan",
+        "cwd": "libs/infra-dns"
+      }
+    },
+    "apply": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "terraform apply \"tfplan\"",
+        "cwd": "libs/infra-dns"
+      }
+    },
+    "destroy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "terraform destroy -auto-approve",
+        "cwd": "libs/infra-dns"
+      }
+    }
+  }
+}

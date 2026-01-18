@@ -1,0 +1,26 @@
+{
+  "name": "infra-bootstrap",
+  "targets": {
+    "init": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "terraform init -reconfigure",
+        "cwd": "libs/infra-bootstrap"
+      }
+    },
+    "plan": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "terraform plan",
+        "cwd": "libs/infra-bootstrap"
+      }
+    },
+    "apply": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "terraform apply -auto-approve",
+        "cwd": "libs/infra-bootstrap"
+      }
+    }
+  }
+}
