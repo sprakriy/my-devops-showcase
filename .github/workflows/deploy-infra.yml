@@ -1,11 +1,16 @@
 name: Deploy Infrastructure
 on:
   workflow_dispatch:
-   inputs:
-      target_project:
-        description: 'Which project to deploy? (e.g., infra-app, infra-main, or "all")'
+    inputs:
+      action:
+        description: 'Terraform Action to perform'
+        type: choice # This is what creates the dropdown
         required: true
-        default: 'all'
+        default: 'plan'
+        options:
+          - plan
+          - apply
+          - destroy
 jobs:
   deploy:
     runs-on: ubuntu-latest
