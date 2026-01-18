@@ -21,7 +21,10 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
+      - name: Inspect Directory Structure
+        run: |
+          echo "Current Directory: $(pwd)"
+          ls -F
       - name: Setup Node (for Nx)
         uses: actions/setup-node@v4
         with:
