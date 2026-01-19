@@ -56,17 +56,8 @@ jobs:
       - name: Execute Terraform via Nx
         working-directory: showcase-monorepo
         run: |
-          if [ "${{ github.event.inputs.action }}" == "apply" ]; then
-            echo "Starting Sequenced Build..."
-            npx nx run infra-main:apply --args="--auto-approve"
-            npx nx run infra-dns:apply --args="--auto-approve"
-            npx nx run infra-app:apply --args="--auto-approve"
-          
-          elif [ "${{ github.event.inputs.action }}" == "destroy" ]; then
-            echo "Starting Sequenced Teardown (Reverse Order)..."
-            npx nx run infra-app:destroy --args="--auto-approve"
-            npx nx run infra-dns:destroy --args="--auto-approve"
-            npx nx run infra-main:destroy --args="--auto-approve"
+          if [ "${{ github.event.inputs.action }}" == "apply" ] || [ "${{ github.event.inputs.action }}" == "destroy" ]; then
+            npx nx run-many -t ${{ github.event.inputs.action }} --args="--auto-approve"
           else
             npx nx run-many -t plan
           fi
