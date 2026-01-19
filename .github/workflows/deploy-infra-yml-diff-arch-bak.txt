@@ -1,0 +1,63 @@
+name: Deploy Infrastructure
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Terraform Action to perform'
+        type: choice # This is what creates the dropdown
+        required: true
+        default: 'plan'
+        options:
+          - plan
+          - apply
+          - destroy
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required for requesting the JWT (OIDC)
+      contents: read  # Required for actions/checkout
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Inspect Directory Structure
+        run: |
+          echo "Current Directory: $(pwd)"
+          ls -F
+      - name: Setup Node (for Nx)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          # Tell it where the lock file is
+          cache-dependency-path: 'showcase-monorepo/package-lock.json'
+
+      - name: Install Dependencies
+        run: npm ci
+        working-directory: showcase-monorepo
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # PASTE YOUR ROLE ARN HERE
+          role-to-assume: arn:aws:iam::319310747432:role/GitHubActionsServiceRole
+          aws-region: us-east-1
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.2
+          terraform_wrapper: false # This is likely the missing link
+
+      - name: Terraform Init
+        working-directory: showcase-monorepo
+        run: npx nx run-many -t init
+# This runs the chosen action (plan/apply/destroy) for all projects in the monorepo
+      - name: Execute Terraform via Nx
+        working-directory: showcase-monorepo
+        run: |
+          if [ "${{ github.event.inputs.action }}" == "apply" ] || [ "${{ github.event.inputs.action }}" == "destroy" ]; then
+            npx nx run-many -t ${{ github.event.inputs.action }} --args="--auto-approve"
+          else
+            npx nx run-many -t plan
+          fi

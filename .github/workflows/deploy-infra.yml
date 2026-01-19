@@ -1,12 +1,18 @@
-name: Deploy Infrastructure
+name: 'Infrastructure Lifecycle'
 on:
   workflow_dispatch:
     inputs:
-      action:
-        description: 'Terraform Action to perform'
-        type: choice # This is what creates the dropdown
+      target_layer:
+        description: 'Layer to Process'
+        type: choice
         required: true
-        default: 'plan'
+        options:
+          - layer-1-main (VPC & DB)
+          - layer-2-services (DNS & EC2)
+      action:
+        description: 'Action'
+        type: choice
+        required: true
         options:
           - plan
           - apply
@@ -53,11 +59,33 @@ jobs:
         working-directory: showcase-monorepo
         run: npx nx run-many -t init
 # This runs the chosen action (plan/apply/destroy) for all projects in the monorepo
-      - name: Execute Terraform via Nx
+      - name: Execute Layered Logic
         working-directory: showcase-monorepo
+        env:
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
         run: |
-          if [ "${{ github.event.inputs.action }}" == "apply" ] || [ "${{ github.event.inputs.action }}" == "destroy" ]; then
-            npx nx run-many -t ${{ github.event.inputs.action }} --args="--auto-approve"
-          else
-            npx nx run-many -t plan
+          # --- CASE 1: FOUNDATION (Network/DB) ---
+          if [ "${{ github.event.inputs.target_layer }}" == "layer-1-main" ]; then
+            if [ "${{ github.event.inputs.action }}" == "plan" ]; then
+              npx nx run infra-main:plan
+            elif [ "${{ github.event.inputs.action }}" == "apply" ]; then
+              npx nx run infra-main:apply --args="-auto-approve"
+            elif [ "${{ github.event.inputs.action }}" == "destroy" ]; then
+              # This will only succeed if layer-2 is ALREADY gone
+              npx nx run infra-main:destroy --args="-auto-approve"
+            fi
+
+          # --- CASE 2: SERVICES (DNS/EC2) ---
+          elif [ "${{ github.event.inputs.target_layer }}" == "layer-2-services" ]; then
+            if [ "${{ github.event.inputs.action }}" == "plan" ]; then
+              npx nx run infra-dns:plan
+              npx nx run infra-app:plan
+            elif [ "${{ github.event.inputs.action }}" == "apply" ]; then
+              npx nx run infra-dns:apply --args="-auto-approve"
+              npx nx run infra-app:apply --args="-auto-approve"
+            elif [ "${{ github.event.inputs.action }}" == "destroy" ]; then
+              # Always destroy services FIRST
+              npx nx run infra-app:destroy --args="-auto-approve"
+              npx nx run infra-dns:destroy --args="-auto-approve"
+            fi
           fi
