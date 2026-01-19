@@ -61,31 +61,68 @@ jobs:
 # This runs the chosen action (plan/apply/destroy) for all projects in the monorepo
       - name: Execute Layered Logic
         working-directory: showcase-monorepo
+# --- STEP 1: RESTORE MEMORY (Only for Apply) ---
+      # This looks for the saved file from your "Plan" run and puts it back
+      - name: Download Plan Artifact
+        if: github.event.inputs.action == 'apply'
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ github.event.inputs.target_layer }}-plan
+          # We place it exactly where Nx's 'cwd' expects it
+          path: showcase-monorepo/libs/${{ github.event.inputs.target_layer }}
+
+      # --- STEP 2: EXECUTION ---
+      - name: Execute Layer Logic
+        working-directory: showcase-monorepo
         env:
           TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
         run: |
-          # --- CASE 1: FOUNDATION (Network/DB) ---
-          if [ "${{ github.event.inputs.target_layer }}" == "layer-1-main" ]; then
-            if [ "${{ github.event.inputs.action }}" == "plan" ]; then
-              npx nx run infra-main:plan
-            elif [ "${{ github.event.inputs.action }}" == "apply" ]; then
-              npx nx run infra-main:apply --args="-auto-approve"
-            elif [ "${{ github.event.inputs.action }}" == "destroy" ]; then
-              # This will only succeed if layer-2 is ALREADY gone
-              npx nx run infra-main:destroy --args="-auto-approve"
-            fi
-
-          # --- CASE 2: SERVICES (DNS/EC2) ---
-          elif [ "${{ github.event.inputs.target_layer }}" == "layer-2-services" ]; then
-            if [ "${{ github.event.inputs.action }}" == "plan" ]; then
-              npx nx run infra-dns:plan
-              npx nx run infra-app:plan
-            elif [ "${{ github.event.inputs.action }}" == "apply" ]; then
-              npx nx run infra-dns:apply --args="-auto-approve"
-              npx nx run infra-app:apply --args="-auto-approve"
-            elif [ "${{ github.event.inputs.action }}" == "destroy" ]; then
-              # Always destroy services FIRST
-              npx nx run infra-app:destroy --args="-auto-approve"
-              npx nx run infra-dns:destroy --args="-auto-approve"
-            fi
+          if [ "${{ github.event.inputs.action }}" == "plan" ]; then
+            npx nx run ${{ github.event.inputs.target_layer }}:plan
+          elif [ "${{ github.event.inputs.action }}" == "apply" ]; then
+            npx nx run ${{ github.event.inputs.target_layer }}:apply
+          elif [ "${{ github.event.inputs.action }}" == "destroy" ]; then
+            npx nx run ${{ github.event.inputs.target_layer }}:destroy --args="-auto-approve"
           fi
+
+      # --- STEP 3: SAVE MEMORY (Only for Plan) ---
+      # After the Plan runs, we grab the file and save it to the GitHub Cloud
+      - name: Upload Plan Artifact
+        if: github.event.inputs.action == 'plan'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.inputs.target_layer }}-plan
+          path: showcase-monorepo/libs/${{ github.event.inputs.target_layer }/tfplan
+          retention-days: 1 # Only need it for 24 hours
+
+# --- DOWNLOAD (Apply Phase) ---
+      - name: Download Services Plans
+        if: github.event.inputs.target_layer == 'layer-2-services' && github.event.inputs.action == 'apply'
+        uses: actions/download-artifact@v4
+        with:
+          name: layer-2-services-plans
+          path: showcase-monorepo/libs/
+
+      # --- EXECUTION ---
+      - name: Execute Services
+        if: github.event.inputs.target_layer == 'layer-2-services'
+        working-directory: showcase-monorepo
+        run: |
+          if [ "${{ github.event.inputs.action }}" == "plan" ]; then
+            npx nx run infra-dns:plan
+            npx nx run infra-app:plan
+          elif [ "${{ github.event.inputs.action }}" == "apply" ]; then
+            npx nx run infra-dns:apply
+            npx nx run infra-app:apply
+          fi
+
+      # --- UPLOAD (Plan Phase) ---
+      - name: Upload Services Plans
+        if: github.event.inputs.target_layer == 'layer-2-services' && github.event.inputs.action == 'plan'
+        uses: actions/upload-artifact@v4
+        with:
+          name: layer-2-services-plans
+          # We grab the tfplan files from BOTH folders
+          path: |
+            showcase-monorepo/libs/infra-dns/tfplan
+            showcase-monorepo/libs/infra-app/tfplan
