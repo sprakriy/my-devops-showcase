@@ -49,6 +49,9 @@ jobs:
           terraform_version: 1.12.2
           terraform_wrapper: false # This is likely the missing link
 
+      - name: Terraform Init
+        working-directory: showcase-monorepo
+        run: npx nx run init -reconfigure
 # This runs the chosen action (plan/apply/destroy) for all projects in the monorepo
       - name: Execute Terraform via Nx
         working-directory: showcase-monorepo
