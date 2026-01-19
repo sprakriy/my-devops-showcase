@@ -51,7 +51,7 @@ jobs:
 
       - name: Terraform Init
         working-directory: showcase-monorepo
-        run: npx nx run init run-many
+        run: npx nx run-many -t init
 # This runs the chosen action (plan/apply/destroy) for all projects in the monorepo
       - name: Execute Terraform via Nx
         working-directory: showcase-monorepo
