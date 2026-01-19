@@ -43,6 +43,11 @@ jobs:
           # PASTE YOUR ROLE ARN HERE
           role-to-assume: arn:aws:iam::319310747432:role/GitHubActionsServiceRole
           aws-region: us-east-1
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.2
+          terraform_wrapper: false # This is likely the missing link
 
 # This runs the chosen action (plan/apply/destroy) for all projects in the monorepo
       - name: Execute Terraform via Nx
