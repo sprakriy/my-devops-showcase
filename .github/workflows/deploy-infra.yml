@@ -58,10 +58,7 @@ jobs:
       - name: Terraform Init
         working-directory: showcase-monorepo
         run: npx nx run-many -t init
-# This runs the chosen action (plan/apply/destroy) for all projects in the monorepo
-      - name: Execute Layered Logic
-        working-directory: showcase-monorepo
-# --- STEP 1: RESTORE MEMORY (Only for Apply) ---
+      # --- STEP 1: RESTORE MEMORY (Only for Apply) ---
       # This looks for the saved file from your "Plan" run and puts it back
       - name: Download Plan Artifact
         if: github.event.inputs.action == 'apply'
