@@ -54,7 +54,16 @@ jobs:
       - name: Terraform Init
         working-directory: showcase-monorepo
         run: npx nx run-many -t init
-
+      - name: Set Internal Variables
+        id: vars
+        run: |
+          if [[ "${{ github.event.inputs.target_layer }}" == *"layer-1-main"* ]]; then
+            echo "layer_id=layer-1-main" >> $GITHUB_OUTPUT
+            echo "targets=infra-main" >> $GITHUB_OUTPUT
+          else
+            echo "layer_id=layer-2-services" >> $GITHUB_OUTPUT
+            echo "targets=infra-dns infra-app" >> $GITHUB_OUTPUT
+          fi
       # --- 1. RESTORE MEMORY (Only for Apply) ---
       - name: Download Plan Artifact
         if: github.event.inputs.action == 'apply'
