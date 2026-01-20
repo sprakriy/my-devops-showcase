@@ -74,12 +74,13 @@ jobs:
           path: showcase-monorepo/libs/
 
       # --- 2. EXECUTION (Unified Logic) ---
+# --- 1. EXECUTION ---
       - name: Execute Layer Logic
         working-directory: showcase-monorepo
         env:
           TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
         run: |
-          # Map the dropdown choice to actual Nx project names
+          # Map targets based on selection
           if [[ "${{ github.event.inputs.target_layer }}" == *"layer-1-main"* ]]; then
             TARGETS="infra-main"
           else
@@ -88,19 +89,16 @@ jobs:
 
           for target in $TARGETS; do
             if [ "${{ github.event.inputs.action }}" == "plan" ]; then
+              # PLAN: Create file and upload to S3
               npx nx run $target:plan --args="-out=tfplan"
+              aws s3 cp libs/$target/tfplan s3://your-state-bucket/plans/$target-tfplan
+
             elif [ "${{ github.event.inputs.action }}" == "apply" ]; then
+              # APPLY: Download from S3 then apply
+              aws s3 cp s3://your-state-bucket/plans/$target-tfplan libs/$target/tfplan
               npx nx run $target:apply
+            
             elif [ "${{ github.event.inputs.action }}" == "destroy" ]; then
               npx nx run $target:destroy --args="-auto-approve"
             fi
           done
-
-      # --- 3. SAVE MEMORY (Only for Plan) ---
-      - name: Upload Plan Artifact
-        if: github.event.inputs.action == 'plan'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ github.event.inputs.target_layer }}-plan
-          path: showcase-monorepo/libs/**/tfplan
-          retention-days: 1
