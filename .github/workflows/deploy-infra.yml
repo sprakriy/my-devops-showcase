@@ -91,11 +91,11 @@ jobs:
             if [ "${{ github.event.inputs.action }}" == "plan" ]; then
               # PLAN: Create file and upload to S3
               npx nx run $target:plan --args="-out=tfplan"
-              aws s3 cp libs/$target/tfplan s3://your-state-bucket/plans/$target-tfplan
+              aws s3 cp libs/$target/tfplan s3://sp-01182026-infra-terraform-state/plans/$target-tfplan
 
             elif [ "${{ github.event.inputs.action }}" == "apply" ]; then
               # APPLY: Download from S3 then apply
-              aws s3 cp s3://your-state-bucket/plans/$target-tfplan libs/$target/tfplan
+              aws s3 cp s3://sp-01182026-infra-terraform-state/plans/$target-tfplan libs/$target/tfplan
               npx nx run $target:apply
             
             elif [ "${{ github.event.inputs.action }}" == "destroy" ]; then
