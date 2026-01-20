@@ -72,6 +72,12 @@ jobs:
         env:
           TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
         run: |
+          if [ -n "$TF_VAR_dbpassword" ]; then
+              echo "TF_VAR_dbpassword is set."
+          else
+              echo "TF_VAR_dbpassword is not set."
+          fi
+
           # Map targets based on selection
           if [[ "${{ github.event.inputs.target_layer }}" == *"layer-1-main"* ]]; then
             TARGETS="infra-main"
