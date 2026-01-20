@@ -64,14 +64,6 @@ jobs:
             echo "layer_id=layer-2-services" >> $GITHUB_OUTPUT
             echo "targets=infra-dns infra-app" >> $GITHUB_OUTPUT
           fi
-      # --- 1. RESTORE MEMORY (Only for Apply) ---
-      - name: Download Plan Artifact
-        if: github.event.inputs.action == 'apply'
-        uses: actions/download-artifact@v4
-        with:
-          # We use a sanitized name for the artifact
-          name: ${{ github.event.inputs.target_layer }}-plan
-          path: showcase-monorepo/libs/
 
       # --- 2. EXECUTION (Unified Logic) ---
 # --- 1. EXECUTION ---
