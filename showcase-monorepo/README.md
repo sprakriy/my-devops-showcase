@@ -56,6 +56,79 @@ Cost Optimization: Automated "Destroy" sequences to ensure zero-waste cloud spen
 Auditability: Every change is verified against the AWS API directly, ensuring the "Source of Truth" in S3 matches the "Physical Reality" in the AWS Console
 
 
+🚀 How to Run
+This project uses Nx to wrap Terraform commands. This ensures that commands are executed in the correct order and provides a unified interface for the CI/CD pipeline.
+
+
+1. Prerequisites
+AWS CLI configured with appropriate permissions.
+
+Node.js installed (for Nx execution).
+
+Terraform CLI installed on the local runner.
+
+2. Initialization
+Before any infrastructure can be built, the backends must be initialized to point to the S3 State Bucket.
+
+Bash
+
+# Initialize the Foundation Layer
+npx nx run infra-main:init
+
+# Initialize the Services Layer
+npx nx run infra-services:init
+3. Deploying the Foundation (Layer 1)
+This layer creates the VPC and the RDS instance.
+
+Bash
+
+# 1. Generate a Plan and save it to S3
+npx nx run infra-main:plan
+
+# 2. Review the plan output in the console.
+
+# 3. Apply the saved plan
+npx nx run infra-main:apply
+4. Deploying the Services (Layer 2)
+This layer reads the outputs from Layer 1 to create DNS records. Note that Layer 1 must be successfully applied before this will work.
+
+Bash
+
+# 1. Generate a Plan (reads Layer 1 Remote State)
+npx nx run infra-services:plan
+
+# 2. Apply the DNS changes
+npx nx run infra-services:apply
+5. Verification
+To ensure the "Physical Reality" matches the "Code Intent," run the following verification command:
+
+Bash
+
+# Get the Hosted Zone ID from Layer 2 Outputs
+ZONE_ID=$(npx nx run infra-services:terraform --args="output -raw hosted_zone_id")
+
+# Query AWS directly for the CNAME record
+aws route53 list-resource-record-sets \
+  --hosted-zone-id $ZONE_ID \
+  --query "ResourceRecordSets[?Name == 'db.showcase.internal.']"
+6. Clean Teardown
+To avoid unnecessary AWS costs, destroy the resources in reverse order.
+
+Bash
+
+# First: Remove DNS and Services
+npx nx run infra-services:destroy
+
+# Second: Remove VPC and RDS
+npx nx run infra-main:destroy
+💡 Lessons Learned (Architect's Notes)
+State Serialization: We encountered a "Saved plan is stale" error during the process. This taught us that in a GitHub Actions environment, the S3 state file's serial number must exactly match the tfplan file. Cleaning old plans from S3 is a mandatory step after a manual destroy.
+
+Data Transformation: RDS endpoints include a port suffix (e.g., :5432). Route53 CNAMEs do not support ports. We implemented a split function in the Layer 1 outputs.tf to ensure the "Producer" sends clean data to the "Consumer."
+
+The "Self-Fixing" Mystery: We observed that Terraform errors regarding "missing attributes" are often actually "data availability" issues. Once Layer 1 successfully commits its state to S3, the downstream Layer 2 errors resolve themselves.
+
+
 <a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
 
 ✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
